@@ -329,7 +329,11 @@ class Device {
         // To work around this issue, we subscribe to the input reports and monitor the side button
         // states. When the side buttons are clicked, we simulate those events.
         if let vendorID, let productID {
-            let handlers = InputReportHandlerRegistry.handlers(for: vendorID, productID: productID)
+            let handlers = InputReportHandlerRegistry.handlers(
+                for: vendorID,
+                productID: productID,
+                productName: rawProductName
+            )
             let needsObservation = handlers.contains { $0.alwaysNeedsReportObservation() } || buttonCount == 3
             if needsObservation, !handlers.isEmpty {
                 inputReportHandlers = handlers
