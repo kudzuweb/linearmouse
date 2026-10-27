@@ -54,7 +54,7 @@ The build with key triggers and the Fn action lives on branch `sanwa` of Mauria'
 1. Install Xcode, then `brew install swiftlint swiftformat npm`.
 2. `git clone -b sanwa https://github.com/kudzuweb/linearmouse.git && cd linearmouse && npm install && make configure`. Without an Apple Development certificate in the keychain, `make configure` signs ad hoc, and macOS may ask for Accessibility again after each rebuild.
 3. `make "$PWD/build/Release/LinearMouse.app"`. The archive step must print `** ARCHIVE SUCCEEDED **`; the export step then fails without a Developer ID certificate, which is expected.
-4. `ditto build/LinearMouse.xcarchive/Products/Applications/LinearMouse.app /Applications/LinearMouse.app`, open it, and grant Accessibility in System Settings › Privacy & Security. On a company-managed Mac this may need IT.
+4. `ditto build/LinearMouse.xcarchive/Products/Applications/LinearMouse.app /Applications/LinearMouse.app`, open it from `/Applications`, and grant Accessibility in System Settings › Privacy & Security. On a company-managed Mac this may need IT. Run it from `/Applications`, never from the `build` folder: the next build replaces that copy, and Start at login and the Accessibility permission both point at the app's location, so an app in `build` stops working or loses its permission after a rebuild.
 5. Pair the ring, close the Keyboard Setup Assistant if it appears, and write the config below to `~/.config/linearmouse/linearmouse.json` before opening LinearMouse.
 6. Turn on Start at login from LinearMouse's menu bar icon.
 
