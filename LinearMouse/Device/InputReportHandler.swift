@@ -69,6 +69,11 @@ protocol InputReportHandler {
     /// Check if this handler should be used for the given device
     func matches(vendorID: Int, productID: Int) -> Bool
 
+    /// Check if this handler should be used when the product name is needed to tell apart
+    /// devices that share a vendor and product ID. Handlers that do not care about the name
+    /// keep the default, which ignores it.
+    func matches(vendorID: Int, productID: Int, productName: String?) -> Bool
+
     /// Whether report observation is needed regardless of button count
     /// Most devices only need observation when buttonCount == 3
     func alwaysNeedsReportObservation() -> Bool
@@ -83,6 +88,10 @@ protocol InputReportHandler {
 }
 
 extension InputReportHandler {
+    func matches(vendorID: Int, productID: Int, productName _: String?) -> Bool {
+        matches(vendorID: vendorID, productID: productID)
+    }
+
     func alwaysNeedsReportObservation() -> Bool {
         false
     }
@@ -95,7 +104,7 @@ enum InputReportHandlerRegistry {
         ElecomTrackballHandler()
     ]
 
-    static func handlers(for vendorID: Int, productID: Int) -> [InputReportHandler] {
-        handlers.filter { $0.matches(vendorID: vendorID, productID: productID) }
+    static func handlers(for vendorID: Int, productID: Int, productName: String? = nil) -> [InputReportHandler] {
+        handlers.filter { $0.matches(vendorID: vendorID, productID: productID, productName: productName) }
     }
 }

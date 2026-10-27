@@ -10,14 +10,18 @@ import Foundation
 /// - Mi Dual Mode Wireless Mouse Silent Edition (0x2717:0x5014)
 /// - Delux M729DB mouse (0x248A:0x8266)
 struct GenericSideButtonHandler: InputReportHandler {
-    private struct Product: Hashable {
+    private struct Product {
         let vendorID: Int
         let productID: Int
+        var excludedProductNames: Set<String> = []
     }
 
-    private static let supportedProducts: Set<Product> = [
+    private static let supportedProducts: [Product] = [
         .init(vendorID: 0x2717, productID: 0x5014), // Mi Silent Mouse
-        .init(vendorID: 0x248A, productID: 0x8266) // Delux M729DB mouse
+        // The Delux's product string is not documented upstream, so the rule is an exclusion: the
+        // Sanwa 400-MABT156 ring mouse reports the same IDs and must not get this quirk.
+        // A device that reports no product name keeps the quirk.
+        .init(vendorID: 0x248A, productID: 0x8266, excludedProductNames: ["GMABT156BK6-1"]) // Delux M729DB mouse
     ]
 
     private let emit: MouseButtonEmitter
@@ -27,7 +31,14 @@ struct GenericSideButtonHandler: InputReportHandler {
     }
 
     func matches(vendorID: Int, productID: Int) -> Bool {
-        Self.supportedProducts.contains(.init(vendorID: vendorID, productID: productID))
+        matches(vendorID: vendorID, productID: productID, productName: nil)
+    }
+
+    func matches(vendorID: Int, productID: Int, productName: String?) -> Bool {
+        Self.supportedProducts.contains {
+            $0.vendorID == vendorID && $0.productID == productID
+                && !($0.excludedProductNames.contains(productName ?? ""))
+        }
     }
 
     func handleReport(_ context: InputReportContext, next: (InputReportContext) -> Void) {

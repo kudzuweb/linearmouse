@@ -466,6 +466,22 @@ final class InputReportHandlerTests: XCTestCase {
         XCTAssertTrue(handlers.first is GenericSideButtonHandler)
     }
 
+    func testRegistrySkipsSideButtonHandlerForSanwaRingMouseSharingDeluxIDs() {
+        let sanwa = InputReportHandlerRegistry.handlers(for: 0x248A, productID: 0x8266, productName: "GMABT156BK6-1")
+        let other = InputReportHandlerRegistry.handlers(for: 0x248A, productID: 0x8266, productName: "Other Mouse")
+
+        XCTAssertTrue(sanwa.isEmpty)
+        XCTAssertEqual(other.count, 1)
+        XCTAssertTrue(other.first is GenericSideButtonHandler)
+    }
+
+    func testRegistryKeepsSideButtonHandlerForSharedIDsWithoutProductName() {
+        let handlers = InputReportHandlerRegistry.handlers(for: 0x248A, productID: 0x8266, productName: nil)
+
+        XCTAssertEqual(handlers.count, 1)
+        XCTAssertTrue(handlers.first is GenericSideButtonHandler)
+    }
+
     func testRegistryFindsSlimbladeHandler() {
         let handlers = InputReportHandlerRegistry.handlers(for: 0x047D, productID: 0x2041)
 
