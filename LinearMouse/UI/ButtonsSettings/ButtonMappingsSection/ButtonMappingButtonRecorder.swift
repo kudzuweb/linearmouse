@@ -3,6 +3,7 @@
 
 import Combine
 import Foundation
+import KeyKit
 import ObservationToken
 import SwiftUI
 
@@ -165,7 +166,8 @@ struct ButtonMappingButtonRecorder: View {
             .flagsChanged,
             .leftMouseDown, .leftMouseUp,
             .rightMouseDown, .rightMouseUp,
-            .otherMouseDown, .otherMouseUp
+            .otherMouseDown, .otherMouseUp,
+            .keyDown, .keyUp
         ]
         if mode == .advanced {
             eventTypes += [
@@ -216,11 +218,13 @@ struct ButtonMappingButtonRecorder: View {
         recordedMappingCancellable = nil
     }
 
-    /// Strip the serial number only for a category-only scope such as "All Mice".
+    /// Whether the scope is a category such as "All Mice" rather than one device.
+    ///
+    /// The recorded serial number is stripped only for a category-only scope.
     /// When a specific device is selected, keep it: the scheme can't tell apart
     /// mice behind the same receiver, so the serial number is the only way to
     /// distinguish units of the same model.
-    private var stripsRecordedSerialNumber: Bool {
+    private var isCategoryOnlyScope: Bool {
         DeviceState.shared.currentDeviceMatcher?.categoryOnlyValue != nil
     }
 
@@ -238,7 +242,7 @@ struct ButtonMappingButtonRecorder: View {
             settingsState.recordedButtonMappingEvent = nil
         }
 
-        let recordedButton = stripsRecordedSerialNumber ? event.button?.withoutSerialNumber : event.button
+        let recordedButton = isCategoryOnlyScope ? event.button?.withoutSerialNumber : event.button
 
         guard mode == .advanced else {
             mapping.button = recordedButton
@@ -264,7 +268,51 @@ struct ButtonMappingButtonRecorder: View {
         synchronizeAdvancedSnapshot()
     }
 
+    /// The key of a key event sent by a device this scope can record from.
+    /// Keyboards are not managed devices, so their keys are never recorded.
+    private func recordableKey(of event: CGEvent) -> Key? {
+        guard let source = DeviceManager.shared.keySourceDevice(for: event),
+              isCategoryOnlyScope || source === DeviceState.shared.currentDeviceRef?.value else {
+            return nil
+        }
+
+        return KeyCodeResolver.shared.key(from: CGKeyCode(event.getIntegerValueField(.keyboardEventKeycode)))
+    }
+
+    private func keyEventReceived(_ event: CGEvent) -> CGEvent? {
+        guard let key = recordableKey(of: event) else {
+            return event
+        }
+        guard event.getIntegerValueField(.keyboardEventAutorepeat) == 0 else {
+            return nil
+        }
+
+        let button = Scheme.Buttons.Mapping.Button.key(key)
+        guard mode == .advanced else {
+            mapping.button = button
+            mapping.scroll = nil
+            mapping.modifierFlags = event.flags
+            if event.type == .keyUp {
+                recording = false
+            }
+            return nil
+        }
+
+        let now = DispatchTime.now().uptimeNanoseconds
+        if event.type == .keyDown {
+            advancedEngine.buttonDown(button, modifierFlags: event.flags, at: now)
+        } else {
+            advancedEngine.buttonUp(button, at: now)
+        }
+        synchronizeAdvancedSnapshot()
+        return nil
+    }
+
     private func eventReceived(_ event: CGEvent) -> CGEvent? {
+        if [.keyDown, .keyUp].contains(event.type) {
+            return keyEventReceived(event)
+        }
+
         guard mode == .advanced else {
             let result = ButtonMappingButtonRecordingEventHandler.record(event, into: &mapping)
             if result.stopsRecording {

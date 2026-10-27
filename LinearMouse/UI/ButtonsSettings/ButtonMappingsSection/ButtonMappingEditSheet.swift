@@ -7,6 +7,7 @@ struct ButtonMappingEditSheet: View {
     @Binding var isPresented: Bool
 
     @ObservedObject private var state: ButtonsSettingsState = .shared
+    @ObservedObject private var settingsState: SettingsState = .shared
 
     @Binding var mapping: Scheme.Buttons.Mapping
     let completion: ((Scheme.Buttons.Mapping) -> Void)?
@@ -48,6 +49,11 @@ struct ButtonMappingEditSheet: View {
                             autoStartRecording: mode == .create,
                             mode: .advanced
                         )
+
+                        if settingsState.buttonMappingRecordingSession != nil {
+                            Text("Key buttons on a mouse or trackball can be recorded. Keyboard keys cannot.")
+                                .settingsDescriptionStyle()
+                        }
                     }
 
                     triggerMessages

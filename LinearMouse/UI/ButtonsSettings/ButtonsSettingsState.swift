@@ -273,7 +273,7 @@ extension ButtonsSettingsState {
     }
 
     var autoScrollTriggerValid: Bool {
-        autoScrollTrigger.valid
+        autoScrollTrigger.valid && autoScrollTrigger.button?.key == nil
     }
 
     var mappings: [Scheme.Buttons.Mapping] {
