@@ -364,6 +364,13 @@ class EventTransformerManager {
             return nil
         }
 
+        // A held key's release belongs to the transformer that took the press,
+        // even when a configuration reload has since removed the trigger.
+        if let owner = activeInteractions[.device(sender.id)]?.transformer as? ButtonMappingTransformer,
+           owner.handlesKeyTrigger(key) {
+            return RouteSelection(device: sender, process: process, display: display)
+        }
+
         let route = getRoute(
             withDevice: sender,
             withProcess: process,
