@@ -1,6 +1,7 @@
 // MIT License
 // Copyright (c) 2021-2026 LinearMouse
 
+import Carbon.HIToolbox
 import KeyKit
 import ObservationToken
 import SwiftUI
@@ -99,6 +100,16 @@ struct KeyboardShortcutRecorder: View {
     private func eventReceived(_ event: CGEvent) -> CGEvent? {
         switch event.type {
         case .flagsChanged:
+            // A flagsChanged event with key code 63 and no other modifier held is Fn.
+            // The flag alone is not enough, because macOS also sets it on arrow and navigation keys.
+            if event.getIntegerValueField(.keyboardEventKeycode) == Int64(kVK_Function),
+               event.flags.contains(.maskSecondaryFn),
+               recordingModifiers.isEmpty {
+                keys = [.fn]
+                recording = false
+                break
+            }
+
             recordingModifiers.insert(event.flags)
 
             // If all modifier keys are released without and other key pressed,

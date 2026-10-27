@@ -95,6 +95,8 @@ public class KeySimulator: KeySimulating {
         case .control, .controlRight:
             flagsToToggle.insert(.maskControl)
             flagsToToggle.insert(.init(rawValue: UInt64(key == .control ? NX_DEVICELCTLKEYMASK : NX_DEVICERCTLKEYMASK)))
+        case .fn:
+            flagsToToggle.insert(.maskSecondaryFn)
         default:
             break
         }
@@ -124,7 +126,7 @@ public class KeySimulator: KeySimulating {
             return
         }
 
-        event.flags = Self.replacingKeyboardModifierFlags(in: event.flags, with: eventFlags)
+        event.flags = Self.postedFlags(inherited: event.flags, key: key, eventFlags: eventFlags)
 
         if !flagsToToggle.isEmpty {
             event.type = .flagsChanged
@@ -135,6 +137,16 @@ public class KeySimulator: KeySimulating {
         }
 
         eventPoster(event, tap)
+    }
+
+    /// Fn is not in `keyboardModifierFlags`, because a held hardware Fn is legitimate on other keys.
+    /// When the simulated key is Fn itself, the source's Fn state is dropped so a release takes effect.
+    static func postedFlags(inherited: CGEventFlags, key: Key, eventFlags: CGEventFlags) -> CGEventFlags {
+        var inheritedFlags = inherited
+        if key == .fn {
+            inheritedFlags.remove(.maskSecondaryFn)
+        }
+        return replacingKeyboardModifierFlags(in: inheritedFlags, with: eventFlags)
     }
 
     static func replacingKeyboardModifierFlags(
