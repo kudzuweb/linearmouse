@@ -179,6 +179,10 @@ extension Key: CustomStringConvertible {
             return "⌃"
         case .controlRight:
             return "Right ⌃"
+        case .pageUp:
+            return "Page Up"
+        case .pageDown:
+            return "Page Down"
         case .numpadPlus:
             return "Numpad +"
         case .numpadMinus:

@@ -86,6 +86,8 @@ final class ButtonMappingTransformer: EventTransformer {
     private let swapsPrimaryAndSecondaryButtons: Bool
     private let gestureTransformer: GestureButtonTransformer?
     private let policy: ButtonMappingPolicy
+    private let keyTriggers: Set<Key>
+    private let isKeyEventFromContextDevice: (CGEvent, EventTransformerContext) -> Bool
 
     private let warpPointer: (CGPoint) -> Void
     private var pointerAnchor: CGPoint?
@@ -111,6 +113,12 @@ final class ButtonMappingTransformer: EventTransformer {
             $0.device?.highResolutionWheelNormalizationMultiplier
         },
         gestureTransformer: GestureButtonTransformer? = nil,
+        isKeyEventFromContextDevice: @escaping (CGEvent, EventTransformerContext) -> Bool = { event, context in
+            guard let device = context.device else {
+                return false
+            }
+            return DeviceManager.shared.keySourceDevice(for: event) === device
+        },
         warpPointer: @escaping (CGPoint) -> Void = { CGWarpMouseCursorPosition($0) },
         eventSink: @escaping (CGEvent) -> Void = { $0.post(tap: .cgSessionEventTap) },
         syntheticClickScheduler: @escaping AsyncScheduler = ButtonMappingTransformer
@@ -136,6 +144,13 @@ final class ButtonMappingTransformer: EventTransformer {
         self.syntheticClickEventSink = syntheticClickEventSink
         self.swapsPrimaryAndSecondaryButtons = swapsPrimaryAndSecondaryButtons
         self.gestureTransformer = gestureTransformer
+        self.isKeyEventFromContextDevice = isKeyEventFromContextDevice
+        keyTriggers = Set(
+            ButtonMappingEngine(mappings: mappings, policy: policy)
+                .mappings
+                .flatMap { $0.trigger?.statefulButtons ?? [] }
+                .compactMap(\.key)
+        )
         self.warpPointer = warpPointer
     }
 
@@ -189,7 +204,7 @@ final class ButtonMappingTransformer: EventTransformer {
         }
 
         if [.keyDown, .keyUp].contains(event.type) {
-            return event
+            return transformKeyEvent(event, in: context, at: now)
         }
 
         let modifierFlags = event.flags.intersection([.maskCommand, .maskShift, .maskControl, .maskAlternate])
@@ -393,6 +408,58 @@ final class ButtonMappingTransformer: EventTransformer {
             return nil
         }
         return alwaysForwardsEvent || !output.consumesEvent ? event : nil
+    }
+
+    func handlesKeyTrigger(_ key: Key) -> Bool {
+        keyTriggers.contains(key)
+    }
+
+    /// Feeds a key sent by this transformer's own device to the recognizer when
+    /// a mapping uses it as a trigger. The keystroke is consumed even when the
+    /// mapping has no outcome for a short press, and never replayed.
+    private func transformKeyEvent(
+        _ event: CGEvent,
+        in context: EventTransformerContext,
+        at now: UInt64
+    ) -> CGEvent? {
+        guard !keyTriggers.isEmpty,
+              isKeyEventFromContextDevice(event, context),
+              let key = KeyCodeResolver.shared.key(
+                  from: CGKeyCode(event.getIntegerValueField(.keyboardEventKeycode))
+              ),
+              keyTriggers.contains(key) else {
+            return event
+        }
+
+        let button = Mapping.Button.key(key)
+        let isRecording = SettingsState.shared.recording
+        // Another interaction keeps this transformer active while recording.
+        // Keys it does not own pass through, both down and up.
+        if isRecording, !recognitionLanes.contains(where: { $0.engine.ownsInteraction(containing: button) }) {
+            return event
+        }
+
+        let recognition: RecognitionResult
+        switch event.type {
+        case .keyDown:
+            // Never start a press from a repeat, so a configuration change
+            // during a hold cannot leave a press without its release.
+            if event.getIntegerValueField(.keyboardEventAutorepeat) != 0 {
+                return nil
+            }
+            recognition = recognize(includingFreshLane: !isRecording) { engine in
+                engine.buttonDown(button, modifierFlags: event.flags, at: now)
+            }
+        default:
+            recognition = recognize { engine in
+                engine.buttonUp(button, modifierFlags: event.flags, at: now)
+            }
+        }
+
+        process(recognition.output, in: recognition.lane)
+        pruneRecognitionLanes()
+        scheduleNextDeadline()
+        return nil
     }
 
     private func recognize(

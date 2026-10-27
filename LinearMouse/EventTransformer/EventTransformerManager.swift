@@ -4,6 +4,7 @@
 import Combine
 import Defaults
 import Foundation
+import KeyKit
 import LRUCache
 import os.log
 
@@ -239,10 +240,14 @@ class EventTransformerManager {
         withMouseLocationPid mouseLocationPid: pid_t?,
         withDisplay display: String?
     ) -> EventTransformerResolution {
-        let device = DeviceManager.shared.deviceFromCGEvent(cgEvent)
         let pid = mouseLocationPid ?? targetPid
-        let selection = RouteSelection(
-            device: device,
+        let keyTriggerSelection = keyTriggerSelection(
+            for: cgEvent,
+            process: pid?.processIdentity,
+            display: display
+        )
+        let selection = keyTriggerSelection ?? RouteSelection(
+            device: DeviceManager.shared.deviceFromCGEvent(cgEvent),
             process: pid?.processIdentity,
             display: display
         )
@@ -300,7 +305,7 @@ class EventTransformerManager {
             withDevice: effectiveSelection.device,
             withProcess: effectiveSelection.process,
             withDisplay: effectiveSelection.display,
-            updateActiveRoute: true
+            updateActiveRoute: keyTriggerSelection == nil
         )
         if let (_, interaction) = activeInteraction {
             if isMouseButtonInteractionEvent(cgEvent) {
@@ -341,6 +346,43 @@ class EventTransformerManager {
             selection: selection,
             mouseButtonTransition: mouseButtonTransition
         )
+    }
+
+    /// A key event sent by a managed device is routed to that device only when
+    /// its route has a trigger for the key. That route is not made the active
+    /// route, so keystrokes never switch routes the way pointer input does. Any
+    /// other key event, including a keyboard's, takes the usual path.
+    private func keyTriggerSelection(
+        for cgEvent: CGEvent,
+        process: ProcessIdentity?,
+        display: String?
+    ) -> RouteSelection? {
+        guard let sender = DeviceManager.shared.keySourceDevice(for: cgEvent),
+              let key = KeyCodeResolver.shared.key(
+                  from: CGKeyCode(cgEvent.getIntegerValueField(.keyboardEventKeycode))
+              ) else {
+            return nil
+        }
+
+        // A held key's release belongs to the transformer that took the press,
+        // even when a configuration reload has since removed the trigger.
+        if let owner = activeInteractions[.device(sender.id)]?.transformer as? ButtonMappingTransformer,
+           owner.handlesKeyTrigger(key) {
+            return RouteSelection(device: sender, process: process, display: display)
+        }
+
+        let route = getRoute(
+            withDevice: sender,
+            withProcess: process,
+            withDisplay: display,
+            updateActiveRoute: false
+        )
+        guard let transformers = route.transformer as? [EventTransformer],
+              transformers.contains(where: { ($0 as? ButtonMappingTransformer)?.handlesKeyTrigger(key) == true }) else {
+            return nil
+        }
+
+        return RouteSelection(device: sender, process: process, display: display)
     }
 
     private func resolution(
@@ -868,7 +910,8 @@ class EventTransformerManager {
         let gestureTransformer: GestureButtonTransformer? = if let gesture = scheme.buttons.$gesture,
                                                                gesture.enabled ?? false,
                                                                let trigger = gesture.trigger,
-                                                               trigger.button != nil {
+                                                               trigger.button != nil,
+                                                               trigger.button?.key == nil {
             GestureButtonTransformer(
                 trigger: trigger,
                 threshold: Double(gesture.threshold ?? 50),
@@ -1088,7 +1131,8 @@ class EventTransformerManager {
         guard let autoScroll,
               autoScroll.enabled ?? false,
               let trigger = autoScroll.trigger,
-              trigger.valid else {
+              trigger.valid,
+              trigger.button?.key == nil else {
             sharedAutoScrollTransformer?.deactivate()
             sharedAutoScrollTransformer = nil
             return nil

@@ -236,6 +236,8 @@ private extension Scheme.Trigger.Button {
             return "mouse:\(number)"
         case let .logitechControl(identity):
             return "logitech:\(identity.productID ?? -1):\(identity.serialNumber ?? ""):\(identity.controlID)"
+        case let .key(key):
+            return "key:\(key.rawValue)"
         }
     }
 }

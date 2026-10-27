@@ -510,6 +510,9 @@
         },
         {
           "$ref": "#/definitions/Scheme.Buttons.Mapping.LogitechControlButton"
+        },
+        {
+          "$ref": "#/definitions/Scheme.Buttons.Mapping.KeyButton"
         }
       ]
     },
@@ -678,6 +681,25 @@
         "numpad9"
       ],
       "type": "string"
+    },
+    "Scheme.Buttons.Mapping.KeyButton": {
+      "additionalProperties": false,
+      "properties": {
+        "key": {
+          "$ref": "#/definitions/Scheme.Buttons.Mapping.Key",
+          "description": "The key the device sends. The mapping fires only for keystrokes sent by the device the scheme matches."
+        },
+        "kind": {
+          "const": "key",
+          "description": "A keystroke sent by a pointing device, such as the page buttons of a ring mouse.",
+          "type": "string"
+        }
+      },
+      "required": [
+        "kind",
+        "key"
+      ],
+      "type": "object"
     },
     "Scheme.Buttons.Mapping.KeyPress": {
       "additionalProperties": false,

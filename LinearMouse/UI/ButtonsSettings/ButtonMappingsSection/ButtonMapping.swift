@@ -1,6 +1,7 @@
 // MIT License
 // Copyright (c) 2021-2026 LinearMouse
 
+import KeyKit
 import SwiftUI
 
 struct ButtonMappingListItem: View {
@@ -172,6 +173,8 @@ struct ButtonMappingButtonDescription<FallbackView: View>: View {
             }
         case let .logitechControl(identity):
             return LocalizedStringKey(identity.userVisibleName)
+        case let .key(key):
+            return LocalizedStringKey(key.description)
         }
     }
 
@@ -274,6 +277,8 @@ enum ButtonMappingTriggerText {
             }
         case let .logitechControl(identity):
             return identity.userVisibleName
+        case let .key(key):
+            return key.description
         }
     }
 

@@ -1233,6 +1233,67 @@ final class ButtonMappingTransformerTests: XCTestCase {
         XCTAssertFalse(transformer.hasActiveInteraction)
     }
 
+    func testKeyTriggerHoldsAcrossAutorepeatAndConsumesTheKey() throws {
+        let scheduler = ButtonMappingTestTimerScheduler()
+        let fromContextDevice: (CGEvent, EventTransformerContext) -> Bool = { _, _ in true }
+        let keySimulator = ButtonMappingTestKeySimulator()
+        let transformer = makeTransformer(
+            mappings: [
+                Mapping(
+                    trigger: .init(input: .button(.key(.pageUp))),
+                    outcomes: .init(press: .init(action: .arg1(.keyPress([.a])), behavior: .hold))
+                )
+            ],
+            scheduler: scheduler,
+            keySimulator: keySimulator,
+            isKeyEventFromContextDevice: fromContextDevice
+        )
+        let context = EventTransformerContext(device: nil)
+
+        XCTAssertNil(try transformer.transform(keyEvent(.pageUp, pressed: true), in: context))
+        XCTAssertNil(try transformer.transform(keyEvent(.pageUp, pressed: true, autorepeat: true), in: context))
+        XCTAssertNil(try transformer.transform(keyEvent(.pageUp, pressed: true, autorepeat: true), in: context))
+        XCTAssertEqual(keySimulator.events, [.down([.a])])
+        XCTAssertTrue(transformer.hasActiveInteraction)
+
+        XCTAssertNil(try transformer.transform(keyEvent(.pageUp, pressed: false), in: context))
+        XCTAssertEqual(keySimulator.events, [.down([.a]), .up([.a]), .reset])
+        XCTAssertFalse(transformer.hasActiveInteraction)
+
+        XCTAssertNil(try transformer.transform(keyEvent(.pageUp, pressed: true, autorepeat: true), in: context))
+        XCTAssertEqual(keySimulator.events, [.down([.a]), .up([.a]), .reset])
+        XCTAssertFalse(transformer.hasActiveInteraction)
+    }
+
+    func testKeyEventsFromOtherSourcesOrWithoutATriggerPassThrough() throws {
+        let scheduler = ButtonMappingTestTimerScheduler()
+        let keySimulator = ButtonMappingTestKeySimulator()
+        var isFromContextDevice = false
+        let fromContextDevice: (CGEvent, EventTransformerContext) -> Bool = { _, _ in isFromContextDevice }
+        let transformer = makeTransformer(
+            mappings: [
+                Mapping(
+                    trigger: .init(input: .button(.key(.pageUp))),
+                    outcomes: .init(press: .init(action: .arg1(.keyPress([.a])), behavior: .hold))
+                )
+            ],
+            scheduler: scheduler,
+            keySimulator: keySimulator,
+            isKeyEventFromContextDevice: fromContextDevice
+        )
+        let context = EventTransformerContext(device: nil)
+
+        XCTAssertNotNil(try transformer.transform(keyEvent(.pageUp, pressed: true), in: context))
+        XCTAssertNotNil(try transformer.transform(keyEvent(.pageUp, pressed: false), in: context))
+
+        isFromContextDevice = true
+        XCTAssertNotNil(try transformer.transform(keyEvent(.pageDown, pressed: true), in: context))
+        XCTAssertNotNil(try transformer.transform(keyEvent(.pageDown, pressed: false), in: context))
+
+        XCTAssertEqual(keySimulator.events, [])
+        XCTAssertFalse(transformer.hasActiveInteraction)
+    }
+
     func testPendingOrderedChordDefersStandalonePressUntilItsWindowExpires() throws {
         for completesChord in [false, true] {
             let scheduler = ButtonMappingTestTimerScheduler()
@@ -2897,6 +2958,7 @@ final class ButtonMappingTransformerTests: XCTestCase {
         keySimulator: KeySimulating? = nil,
         scrollRecognizer: ScrollActionRecognizer = .init(),
         gestureTransformer: GestureButtonTransformer? = nil,
+        isKeyEventFromContextDevice: @escaping (CGEvent, EventTransformerContext) -> Bool = { _, _ in false },
         warpPointer: @escaping (CGPoint) -> Void = { _ in },
         eventSink: @escaping (CGEvent) -> Void = { _ in }
     ) -> ButtonMappingTransformer {
@@ -2909,6 +2971,7 @@ final class ButtonMappingTransformerTests: XCTestCase {
             keySimulator: keySimulator,
             scrollRecognizer: scrollRecognizer,
             gestureTransformer: gestureTransformer,
+            isKeyEventFromContextDevice: isKeyEventFromContextDevice,
             warpPointer: warpPointer,
             eventSink: eventSink,
             syntheticClickScheduler: { $0() },
@@ -2936,6 +2999,14 @@ final class ButtonMappingTransformerTests: XCTestCase {
             trigger: .init(input: .button(.mouse(button))),
             outcomes: .init(shortPress: short, longPress: long)
         )
+    }
+
+    private func keyEvent(_ key: Key, pressed: Bool, autorepeat: Bool = false) throws -> CGEvent {
+        let keyCode = try XCTUnwrap(KeyCodeResolver.shared.keyCode(for: key))
+        let event = try XCTUnwrap(CGEvent(keyboardEventSource: nil, virtualKey: keyCode, keyDown: pressed))
+        event.setIntegerValueField(.keyboardEventAutorepeat, value: autorepeat ? 1 : 0)
+        event.flags = []
+        return event
     }
 
     private func buttonEvent(button: Int = 4, pressed: Bool) throws -> CGEvent {
