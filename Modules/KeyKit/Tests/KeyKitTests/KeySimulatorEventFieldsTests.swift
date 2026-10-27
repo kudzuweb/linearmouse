@@ -73,6 +73,30 @@ final class KeySimulatorEventFieldsTests: XCTestCase {
         })
     }
 
+    func testFnIsPostedAsFlagsChangedWithSecondaryFnFlag() throws {
+        var events: [CGEvent] = []
+        let simulator = KeySimulator { event, _ in events.append(event) }
+        try simulator.down(keys: [.fn], tap: nil)
+        try simulator.up(keys: [.fn], tap: nil)
+
+        XCTAssertEqual(events.map(\.type), [.flagsChanged, .flagsChanged])
+        XCTAssertEqual(
+            events.map { $0.getIntegerValueField(.keyboardEventKeycode) },
+            [Int64(kVK_Function), Int64(kVK_Function)]
+        )
+        XCTAssertTrue(events[0].flags.contains(.maskSecondaryFn))
+    }
+
+    func testFnReleaseDropsInheritedSecondaryFnFlag() {
+        let flags = KeySimulator.postedFlags(inherited: [.maskSecondaryFn], key: .fn, eventFlags: [])
+        XCTAssertFalse(flags.contains(.maskSecondaryFn))
+    }
+
+    func testOtherKeysKeepInheritedSecondaryFnFlag() {
+        let flags = KeySimulator.postedFlags(inherited: [.maskSecondaryFn], key: .command, eventFlags: [.maskCommand])
+        XCTAssertTrue(flags.contains(.maskSecondaryFn))
+    }
+
     func testResolvedShortcutRestoresOptionWithoutKeepingCommandOrShift() throws {
         var events: [CGEvent] = []
         let simulator = KeySimulator { event, _ in events.append(event) }

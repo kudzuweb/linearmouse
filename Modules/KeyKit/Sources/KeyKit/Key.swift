@@ -16,6 +16,7 @@ public enum Key: String, Codable {
     case shiftRight
     case optionRight
     case controlRight
+    case fn
     case arrowLeft
     case arrowRight
     case arrowDown
@@ -150,7 +151,7 @@ public enum Key: String, Codable {
 
 extension Key {
     private static let modifiersKeys: Set<Key> = [.command, .shift, .option, .control,
-                                                  .commandRight, .shiftRight, .optionRight, .controlRight]
+                                                  .commandRight, .shiftRight, .optionRight, .controlRight, .fn]
 
     public var isModifier: Bool {
         Self.modifiersKeys.contains(self)

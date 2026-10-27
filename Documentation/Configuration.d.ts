@@ -1089,6 +1089,7 @@ declare namespace Scheme {
         | "shiftRight"
         | "optionRight"
         | "controlRight"
+        | "fn"
         | "arrowLeft"
         | "arrowRight"
         | "arrowDown"

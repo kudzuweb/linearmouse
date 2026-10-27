@@ -85,6 +85,7 @@ public class KeyCodeResolver {
         newMapping[Key.shiftRight.rawValue] = 0x3C
         newMapping[Key.optionRight.rawValue] = 0x3D
         newMapping[Key.controlRight.rawValue] = 0x3E
+        newMapping[Key.fn.rawValue] = 0x3F
         newMapping[Key.arrowLeft.rawValue] = 0x7B
         newMapping[Key.arrowRight.rawValue] = 0x7C
         newMapping[Key.arrowDown.rawValue] = 0x7D
