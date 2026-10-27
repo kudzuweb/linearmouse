@@ -410,13 +410,13 @@ final class ButtonMappingTransformer: EventTransformer {
         return alwaysForwardsEvent || !output.consumesEvent ? event : nil
     }
 
-    /// Feeds a key sent by this transformer's own device to the recognizer when
-    /// a mapping uses it as a trigger. The keystroke is consumed even when the
-    /// mapping has no outcome for a short press, and never replayed.
     func handlesKeyTrigger(_ key: Key) -> Bool {
         keyTriggers.contains(key)
     }
 
+    /// Feeds a key sent by this transformer's own device to the recognizer when
+    /// a mapping uses it as a trigger. The keystroke is consumed even when the
+    /// mapping has no outcome for a short press, and never replayed.
     private func transformKeyEvent(
         _ event: CGEvent,
         in context: EventTransformerContext,

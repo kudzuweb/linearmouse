@@ -659,12 +659,15 @@ mouse in presentation mode. Use a `key` button to trigger a mapping from such a 
 ```
 
 A key trigger fires only for keystrokes sent by a device the scheme matches. Keystrokes from devices
-LinearMouse does not manage, such as ordinary keyboards, are never matched. A scheme without a device condition matches every mouse, so add an `if` with a
-`device` condition to limit the trigger to one mouse. A configured key is always consumed on that
-device, so it no longer reaches applications, and a short press is not replayed when the mapping only
-defines a long press. Short press, long press, and `press` outcomes work with a key trigger, except the
-`remap` behavior. Key triggers cannot be used for auto scroll, gestures, or redirecting pointer movement to
-scroll. In the recorder, press the button on the mouse; keys from unmanaged devices are ignored.
+LinearMouse does not manage, such as ordinary keyboards, are never matched or recorded. A scheme
+without a device condition matches every mouse, so add an `if` with a `device` condition to limit the
+trigger to one mouse. A configured key is always consumed on that device, so it no longer reaches
+applications, and a short press is not replayed when the mapping only defines a long press.
+
+Key triggers support short press, long press, and `press` outcomes with the `hold` behavior. The
+`remap` behavior is not available for them. Key triggers cannot be used for auto scroll, gestures, or
+redirecting pointer movement to scroll. In the recorder, press the button on the mouse; keys from
+devices LinearMouse does not manage are ignored.
 
 ### Modifier keys
 
