@@ -920,7 +920,25 @@ class DeviceManager: ObservableObject {
         eventDeviceSnapshot.identifiedDevice(for: senderID)
     }
 
+    /// The managed device that sent a key event, or nil when the sender is not
+    /// one of them, as for an ordinary keyboard. Never falls back to the last
+    /// active device, so that keyboard input cannot be mistaken for a mouse's.
+    func keySourceDevice(for cgEvent: CGEvent) -> Device? {
+        guard [.keyDown, .keyUp].contains(cgEvent.type),
+              let ioHIDEvent = CGEventCopyIOHIDEvent(cgEvent) else {
+            return nil
+        }
+
+        return identifiedDevice(for: IOHIDEventGetSenderID(ioHIDEvent))
+    }
+
     func deviceFromCGEvent(_ cgEvent: CGEvent) -> Device? {
+        // Key events from a managed device, such as a ring mouse's page buttons, are
+        // routed to that device. The rest keep the fallback below.
+        if let keySourceDevice = keySourceDevice(for: cgEvent) {
+            return keySourceDevice
+        }
+
         // Issue: https://github.com/linearmouse/linearmouse/issues/677#issuecomment-1938208542
         guard ![.flagsChanged, .keyDown, .keyUp].contains(cgEvent.type),
               let ioHIDEvent = CGEventCopyIOHIDEvent(cgEvent) else {
