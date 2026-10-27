@@ -50746,6 +50746,9 @@
         }
       }
     },
+    "Record a trigger to choose an action. Click the trigger to record again." : {
+      "extractionState" : "manual"
+    },
     "Record a trigger to start converting. Until then, pointer movement is left alone." : {
       "comment" : "Description shown while the hold-to-convert mode has no trigger recorded yet.",
       "localizations" : {

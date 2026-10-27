@@ -66,9 +66,15 @@ struct ButtonMappingEditSheet: View {
                                 ButtonMappingAction(action: $mapping.recordedAction)
                             }
                         } else {
-                            Text("Record a trigger to choose an action.")
-                                .foregroundColor(.secondary)
-                                .frame(maxWidth: .infinity, alignment: .leading)
+                            Group {
+                                if mode == .create {
+                                    Text("Record a trigger to choose an action. Click the trigger to record again.")
+                                } else {
+                                    Text("Record a trigger to choose an action.")
+                                }
+                            }
+                            .foregroundColor(.secondary)
+                            .frame(maxWidth: .infinity, alignment: .leading)
                         }
                     }
                     .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .topLeading)
@@ -107,6 +113,15 @@ struct ButtonMappingEditSheet: View {
         }
     }
 
+    private var showsPrimaryAloneMessage: Bool {
+        guard mapping.isUnmodifiedStandalonePrimaryButton else {
+            return false
+        }
+        // Only a short press is invalid while recording; a hand-edited
+        // mapping opened for editing can be invalid in other ways.
+        return mode == .create ? mapping.outcomes?.shortPress != nil : !mapping.valid
+    }
+
     @ViewBuilder
     private var triggerMessages: some View {
         if conflicted {
@@ -115,7 +130,7 @@ struct ButtonMappingEditSheet: View {
                 systemImage: "exclamationmark.circle.fill",
                 color: .red
             )
-        } else if !mapping.valid, mapping.isUnmodifiedStandalonePrimaryButton {
+        } else if showsPrimaryAloneMessage {
             ButtonMappingMessage(
                 "Primary alone only supports Long Press. Add a modifier or another button for other actions.",
                 systemImage: "exclamationmark.circle.fill",
