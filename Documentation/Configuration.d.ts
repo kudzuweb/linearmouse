@@ -795,7 +795,7 @@ declare namespace Scheme {
         right?: Action;
       };
 
-      type Button = PhysicalButton | LogitechControlButton;
+      type Button = PhysicalButton | LogitechControlButton | KeyButton;
 
       type LogitechControlButton = {
         /**
@@ -817,6 +817,18 @@ declare namespace Scheme {
          * @description Match a specific Logitech device serial number when needed.
          */
         serialNumber?: string;
+      };
+
+      type KeyButton = {
+        /**
+         * @description A keystroke sent by a pointing device, such as the page buttons of a ring mouse.
+         */
+        kind: "key";
+
+        /**
+         * @description The key the device sends. The mapping fires only for keystrokes sent by the device the scheme matches.
+         */
+        key: Key;
       };
 
       type Action =

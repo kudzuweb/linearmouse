@@ -284,6 +284,21 @@ final class ConfigurationTests: XCTestCase {
         XCTAssertEqual(button["serialNumber"] as? String, "ABC123")
     }
 
+    func testMappingRoundTripsKeyButtonAsTaggedStructure() throws {
+        let mapping = try JSONDecoder().decode(
+            Scheme.Buttons.Mapping.self,
+            from: XCTUnwrap(#"{"button":{"kind":"key","key":"pageUp"},"action":"mouse.button.back"}"#
+                .data(using: .utf8))
+        )
+        XCTAssertEqual(mapping.button, .key(.pageUp))
+
+        let data = try JSONEncoder().encode(mapping)
+        let jsonObject = try XCTUnwrap(JSONSerialization.jsonObject(with: data) as? [String: Any])
+        let button = try XCTUnwrap(jsonObject["button"] as? [String: Any])
+        XCTAssertEqual(button["kind"] as? String, "key")
+        XCTAssertEqual(button["key"] as? String, "pageUp")
+    }
+
     func testMappingDecodesHoldFlag() throws {
         let mapping = try JSONDecoder().decode(
             Scheme.Buttons.Mapping.self,

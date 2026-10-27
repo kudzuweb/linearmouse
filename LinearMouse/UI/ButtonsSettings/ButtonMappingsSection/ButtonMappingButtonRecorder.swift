@@ -483,6 +483,8 @@ private struct ButtonMappingRecordingPreview: View {
             }
         case let .logitechControl(identity):
             return identity.userVisibleName
+        case let .key(key):
+            return key.description
         }
     }
 

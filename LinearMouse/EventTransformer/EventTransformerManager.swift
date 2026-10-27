@@ -868,7 +868,8 @@ class EventTransformerManager {
         let gestureTransformer: GestureButtonTransformer? = if let gesture = scheme.buttons.$gesture,
                                                                gesture.enabled ?? false,
                                                                let trigger = gesture.trigger,
-                                                               trigger.button != nil {
+                                                               trigger.button != nil,
+                                                               trigger.button?.key == nil {
             GestureButtonTransformer(
                 trigger: trigger,
                 threshold: Double(gesture.threshold ?? 50),
@@ -1088,7 +1089,8 @@ class EventTransformerManager {
         guard let autoScroll,
               autoScroll.enabled ?? false,
               let trigger = autoScroll.trigger,
-              trigger.valid else {
+              trigger.valid,
+              trigger.button?.key == nil else {
             sharedAutoScrollTransformer?.deactivate()
             sharedAutoScrollTransformer = nil
             return nil

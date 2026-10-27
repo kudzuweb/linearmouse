@@ -1,6 +1,8 @@
 // MIT License
 // Copyright (c) 2021-2026 LinearMouse
 
+import KeyKit
+
 extension Scheme.Buttons {
     struct Mapping: Equatable, Hashable {
         /// The structured trigger used by button mappings.
@@ -29,6 +31,8 @@ extension Scheme.Buttons.Mapping {
     enum Button: Equatable, Hashable {
         case mouse(Int)
         case logitechControl(LogitechControlIdentity)
+        /// A keystroke sent by a pointing device, such as a ring mouse's page buttons.
+        case key(Key)
 
         var mouseButtonNumber: Int? {
             guard case let .mouse(buttonNumber) = self else {
@@ -46,6 +50,14 @@ extension Scheme.Buttons.Mapping {
             return identity
         }
 
+        var key: Key? {
+            guard case let .key(key) = self else {
+                return nil
+            }
+
+            return key
+        }
+
         var withoutSerialNumber: Self {
             guard case var .logitechControl(identity) = self else {
                 return self
@@ -55,12 +67,16 @@ extension Scheme.Buttons.Mapping {
             return .logitechControl(identity)
         }
 
-        var syntheticMouseButtonNumber: Int {
+        /// The button number of the synthetic mouse event that stands for this
+        /// button. A key trigger has none, because it never becomes a mouse event.
+        var syntheticMouseButtonNumber: Int? {
             switch self {
             case let .mouse(buttonNumber):
                 return buttonNumber
             case .logitechControl:
                 return LogitechHIDPPDeviceMetadataProvider.ReprogControlsV4.reservedVirtualButtonNumber
+            case .key:
+                return nil
             }
         }
 
@@ -72,6 +88,9 @@ extension Scheme.Buttons.Mapping {
             switch (self, other) {
             case let (.mouse(buttonNumber), .mouse(otherButtonNumber)):
                 return buttonNumber == otherButtonNumber
+
+            case let (.key(key), .key(otherKey)):
+                return key == otherKey
 
             case let (.logitechControl(identity), .logitechControl(otherIdentity)):
                 guard identity.controlID == otherIdentity.controlID else {
@@ -305,10 +324,12 @@ extension Scheme.Buttons.Mapping: Codable {
 extension Scheme.Buttons.Mapping.Button: Codable {
     private enum CodingKeys: String, CodingKey {
         case kind
+        case key
     }
 
     private enum Kind: String, Codable {
         case logitechControl
+        case key
     }
 
     init(from decoder: Decoder) throws {
@@ -321,6 +342,8 @@ extension Scheme.Buttons.Mapping.Button: Codable {
         switch try container.decode(Kind.self, forKey: .kind) {
         case .logitechControl:
             self = try .logitechControl(LogitechControlIdentity(from: decoder))
+        case .key:
+            self = try .key(container.decode(Key.self, forKey: .key))
         }
     }
 
@@ -331,6 +354,10 @@ extension Scheme.Buttons.Mapping.Button: Codable {
             try container.encode(buttonNumber)
         case let .logitechControl(identity):
             try identity.encode(to: encoder)
+        case let .key(key):
+            var container = encoder.container(keyedBy: CodingKeys.self)
+            try container.encode(Kind.key, forKey: .kind)
+            try container.encode(key, forKey: .key)
         }
     }
 }
