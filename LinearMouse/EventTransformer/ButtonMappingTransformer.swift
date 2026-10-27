@@ -88,7 +88,6 @@ final class ButtonMappingTransformer: EventTransformer {
     private let policy: ButtonMappingPolicy
     private let keyTriggers: Set<Key>
     private let isKeyEventFromContextDevice: (CGEvent, EventTransformerContext) -> Bool
-    private var heldKeyTriggers = Set<Key>()
 
     private let warpPointer: (CGPoint) -> Void
     private var pointerAnchor: CGPoint?
@@ -146,7 +145,12 @@ final class ButtonMappingTransformer: EventTransformer {
         self.swapsPrimaryAndSecondaryButtons = swapsPrimaryAndSecondaryButtons
         self.gestureTransformer = gestureTransformer
         self.isKeyEventFromContextDevice = isKeyEventFromContextDevice
-        keyTriggers = Set(mappings.flatMap { $0.trigger?.statefulButtons ?? [] }.compactMap(\.key))
+        keyTriggers = Set(
+            ButtonMappingEngine(mappings: mappings, policy: policy)
+                .mappings
+                .flatMap { $0.trigger?.statefulButtons ?? [] }
+                .compactMap(\.key)
+        )
         self.warpPointer = warpPointer
     }
 
@@ -409,6 +413,10 @@ final class ButtonMappingTransformer: EventTransformer {
     /// Feeds a key sent by this transformer's own device to the recognizer when
     /// a mapping uses it as a trigger. The keystroke is consumed even when the
     /// mapping has no outcome for a short press, and never replayed.
+    func handlesKeyTrigger(_ key: Key) -> Bool {
+        keyTriggers.contains(key)
+    }
+
     private func transformKeyEvent(
         _ event: CGEvent,
         in context: EventTransformerContext,
@@ -425,22 +433,24 @@ final class ButtonMappingTransformer: EventTransformer {
 
         let button = Mapping.Button.key(key)
         let isRecording = SettingsState.shared.recording
+        // Another interaction keeps this transformer active while recording.
+        // Keys it does not own pass through, both down and up.
+        if isRecording, !recognitionLanes.contains(where: { $0.engine.ownsInteraction(containing: button) }) {
+            return event
+        }
+
         let recognition: RecognitionResult
         switch event.type {
         case .keyDown:
-            if event.getIntegerValueField(.keyboardEventAutorepeat) != 0, heldKeyTriggers.contains(key) {
+            // Never start a press from a repeat, so a configuration change
+            // during a hold cannot leave a press without its release.
+            if event.getIntegerValueField(.keyboardEventAutorepeat) != 0 {
                 return nil
             }
-            if isRecording,
-               !recognitionLanes.contains(where: { $0.engine.ownsInteraction(containing: button) }) {
-                return event
-            }
-            heldKeyTriggers.insert(key)
             recognition = recognize(includingFreshLane: !isRecording) { engine in
                 engine.buttonDown(button, modifierFlags: event.flags, at: now)
             }
         default:
-            heldKeyTriggers.remove(key)
             recognition = recognize { engine in
                 engine.buttonUp(button, modifierFlags: event.flags, at: now)
             }
@@ -1006,7 +1016,6 @@ extension ButtonMappingTransformer: Deactivatable {
             lane.bufferedEvents.removeAll()
         }
         recognitionLanes.removeAll()
-        heldKeyTriggers.removeAll()
         pointerAnchor = nil
         actionExecutor.deactivate()
         gestureTransformer?.deactivate()

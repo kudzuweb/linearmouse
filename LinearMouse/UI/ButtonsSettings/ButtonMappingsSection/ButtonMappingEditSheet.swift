@@ -51,8 +51,10 @@ struct ButtonMappingEditSheet: View {
                         )
 
                         if settingsState.buttonMappingRecordingSession != nil {
-                            Text("Key buttons on a mouse or trackball can be recorded. Keyboard keys cannot.")
-                                .settingsDescriptionStyle()
+                            Text(
+                                "Keys sent by a mouse or trackball can be recorded. Keys from devices LinearMouse does not manage cannot."
+                            )
+                            .settingsDescriptionStyle()
                         }
                     }
 

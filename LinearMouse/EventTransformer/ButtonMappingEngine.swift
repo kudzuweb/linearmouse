@@ -176,7 +176,8 @@ struct ButtonMappingEngine {
         var locksPointer: Bool
     }
 
-    private let mappings: [Mapping]
+    /// The valid mappings that have a configured action.
+    let mappings: [Mapping]
     private let policy: ButtonMappingPolicy
     private var pressedButtons = Set<Button>()
     private var pressedAt = [Button: UInt64]()

@@ -1259,6 +1259,10 @@ final class ButtonMappingTransformerTests: XCTestCase {
         XCTAssertNil(try transformer.transform(keyEvent(.pageUp, pressed: false), in: context))
         XCTAssertEqual(keySimulator.events, [.down([.a]), .up([.a]), .reset])
         XCTAssertFalse(transformer.hasActiveInteraction)
+
+        XCTAssertNil(try transformer.transform(keyEvent(.pageUp, pressed: true, autorepeat: true), in: context))
+        XCTAssertEqual(keySimulator.events, [.down([.a]), .up([.a]), .reset])
+        XCTAssertFalse(transformer.hasActiveInteraction)
     }
 
     func testKeyEventsFromOtherSourcesOrWithoutATriggerPassThrough() throws {

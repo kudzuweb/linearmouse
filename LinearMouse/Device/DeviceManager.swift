@@ -933,12 +933,6 @@ class DeviceManager: ObservableObject {
     }
 
     func deviceFromCGEvent(_ cgEvent: CGEvent) -> Device? {
-        // Key events from a managed device, such as a ring mouse's page buttons, are
-        // routed to that device. The rest keep the fallback below.
-        if let keySourceDevice = keySourceDevice(for: cgEvent) {
-            return keySourceDevice
-        }
-
         // Issue: https://github.com/linearmouse/linearmouse/issues/677#issuecomment-1938208542
         guard ![.flagsChanged, .keyDown, .keyUp].contains(cgEvent.type),
               let ioHIDEvent = CGEventCopyIOHIDEvent(cgEvent) else {
