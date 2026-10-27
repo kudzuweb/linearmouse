@@ -108,6 +108,10 @@ struct ButtonMappingRecordingEngine {
             triggerButtons = [button]
             triggerStartedAt = timestamp
         } else if belongsToCurrentTriggerGroup(at: timestamp) {
+            if isUnmodifiedStandalonePrimaryButton {
+                deltaX = 0
+                deltaY = 0
+            }
             triggerButtons.append(button)
         } else {
             heldPrefixButtons.append(contentsOf: triggerButtons)
@@ -150,6 +154,11 @@ struct ButtonMappingRecordingEngine {
 
         self.deltaX += deltaX
         self.deltaY += deltaY
+        // A swipe on an unmodified primary button is never a valid mapping, so
+        // pointer drift must not replace the provisional long press.
+        guard !isUnmodifiedStandalonePrimaryButton else {
+            return
+        }
         if let direction = swipeDirection(deltaX: self.deltaX, deltaY: self.deltaY) {
             recognition = .swipe(direction)
         }
@@ -265,8 +274,13 @@ struct ButtonMappingRecordingEngine {
         )
     }
 
+    private var isUnmodifiedStandalonePrimaryButton: Bool {
+        triggerButtons == [.mouse(0)] && heldPrefixButtons.isEmpty && modifierFlags.isEmpty
+    }
+
     private var movementDirection: ButtonMappingEngine.SwipeDirection? {
-        guard sqrt(deltaX * deltaX + deltaY * deltaY) >= 4 else {
+        guard !isUnmodifiedStandalonePrimaryButton,
+              sqrt(deltaX * deltaX + deltaY * deltaY) >= 4 else {
             return nil
         }
         if abs(deltaX) > abs(deltaY) {

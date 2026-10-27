@@ -223,6 +223,38 @@ final class ButtonMappingRecordingEngineTests: XCTestCase {
         XCTAssertTrue(recorder.snapshot.isComplete)
     }
 
+    func testPrimaryButtonAloneKeepsLongPressWhenThePointerDrifts() {
+        var recorder = ButtonMappingRecordingEngine()
+
+        recorder.buttonDown(.mouse(0), modifierFlags: [], at: ms(0))
+        recorder.pointerMoved(deltaX: 0, deltaY: 55, at: ms(100))
+        recorder.advance(to: ms(600))
+
+        XCTAssertEqual(recorder.snapshot.recognition, .longPress)
+        XCTAssertEqual(recorder.snapshot.mapping?.valid, true)
+    }
+
+    func testDriftOnPrimaryButtonDoesNotCountTowardALaterChord() {
+        var recorder = ButtonMappingRecordingEngine()
+
+        recorder.buttonDown(.mouse(0), modifierFlags: [], at: ms(0))
+        recorder.pointerMoved(deltaX: 0, deltaY: 55, at: ms(10))
+        recorder.buttonDown(.mouse(2), modifierFlags: [], at: ms(20))
+        recorder.pointerMoved(deltaX: 0, deltaY: 5, at: ms(30))
+
+        XCTAssertNil(recorder.snapshot.recognition)
+    }
+
+    func testSecondaryButtonStillRecordsSwipeAfterDrift() {
+        var recorder = ButtonMappingRecordingEngine()
+
+        recorder.buttonDown(.mouse(2), modifierFlags: [], at: ms(0))
+        recorder.pointerMoved(deltaX: 0, deltaY: 55, at: ms(100))
+        recorder.advance(to: ms(600))
+
+        XCTAssertEqual(recorder.snapshot.recognition, .swipe(.down))
+    }
+
     func testMovementBelowSwipeThresholdPreservesLongPressOnRelease() {
         var recorder = ButtonMappingRecordingEngine()
 
